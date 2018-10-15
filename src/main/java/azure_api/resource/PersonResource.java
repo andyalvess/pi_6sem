@@ -1,5 +1,7 @@
 package azure_api.resource;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.ArrayList;
@@ -14,6 +16,8 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 
 import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.FileEntity;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.util.EntityUtils;
@@ -27,15 +31,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-public class Person {
+public class PersonResource {
 
 	private static final String subscriptionKey = "cee261e071b94f568bc79cdf85f11aa7";
 	private static final String uriBase = "https://brazilsouth.api.cognitive.microsoft.com/face/v1.0/persongroups";
 
 	@RequestMapping(value = "/person/criar", method = RequestMethod.POST)
-	public ResponseEntity<String> Create(@RequestParam(value = "personGroupId", required = true) String personGroupId,
+	public ResponseEntity<String> Create(
+			@RequestParam(value = "personGroupId", required = true) String personGroupId,
 			@RequestParam(value = "name", required = false) String name,
 			@RequestParam(value = "userData", required = true) String userData) {
 
@@ -84,27 +90,33 @@ public class Person {
 
 	@RequestMapping(value = "/person/addFace", method = RequestMethod.POST)
 	public ResponseEntity<String> addFace(
-			@RequestParam(value="file", required=true) InputStream dataStream,
+			@RequestParam(value="personGroupId", required=true) String personGroupId,
+			@RequestParam(value="file", required=true) MultipartFile arquivo,
 			@RequestParam(value="personId", required=true) String personId
 			) throws Exception {
 
 		HttpClient httpclient = new DefaultHttpClient();
 
 		try {
-			URIBuilder builder = new URIBuilder(uriBase + "/persongroups/usjt/persons" +  personId + "/persistedFaces");
+			URIBuilder builder = new URIBuilder(uriBase + "/" + personGroupId + "/persons/" +  personId + "/persistedFaces");
 
 			// Prepare the URI for the REST API call.
 			URI uri = builder.build();
 			HttpPost request = new HttpPost(uri);
 
 			// Request headers.
-			request.setHeader("Content-Type", "application/json");
+			request.setHeader("Content-Type", "application/octet-stream");
 			request.setHeader("Ocp-Apim-Subscription-Key", subscriptionKey);
 
 			// Request body
-			// StringEntity reqEntity = new StringEntity("{\"name\": \"teste2\",
-			// \"userData\": \"teste userData\"}");
-			// request.setEntity(reqEntity);
+//			File f = new File(arquivo.getBytes());
+			File convFile = new File(arquivo.getOriginalFilename());
+		    convFile.createNewFile(); 
+		    FileOutputStream fos = new FileOutputStream(convFile); 
+		    fos.write(arquivo.getBytes());
+		    fos.close(); 
+			FileEntity body = new FileEntity(convFile, ContentType.APPLICATION_OCTET_STREAM);
+			request.setEntity(body);
 
 			// Execute the REST API call and get the response entity.
 			HttpResponse response = httpclient.execute(request);
